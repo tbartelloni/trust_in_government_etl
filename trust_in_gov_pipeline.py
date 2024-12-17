@@ -405,6 +405,6 @@ if __name__ == "__main__":
     ).deploy(
         name="gov-trust-deployment",
         work_pool_name="MyWorkPool",
-        cron="* * 28 3,6,9,12"
+        cron="* * 28 3,6,9,12 *"
     )
     print("Good news everyone!")
