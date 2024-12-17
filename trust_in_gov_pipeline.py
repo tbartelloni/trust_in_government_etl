@@ -8,6 +8,8 @@ from io import StringIO
 from prefect import flow, task, get_run_logger
 from prefect.blocks.system import Secret
 from prefect.server.schemas.schedules import CronSchedule
+from prefect_github.repository import GitHubRepository
+
 
 @task(retries=5, retry_delay_seconds=10)
 def get_gdp_data(
@@ -394,8 +396,11 @@ def trust_in_government_pipeline():
     final_table = transform_data(combined_table)
 
 # Deploy the flow
+github_repository_block = GitHubRepository.load("trust-in-gov-github")
+
 if __name__ == "__main__":
     trust_in_government_pipeline.deploy(
+        source = github_repository_block
         name="gov-trust-deployment",
         work_pool_name="MyWorkPool"
     )
