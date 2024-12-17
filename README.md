@@ -85,9 +85,18 @@ Needs some updating but I used Prefect Secrets to store API keys and other passw
 
 ## Error handling and communication
 
+I set up notifications for two distinct scenarios: When the deployment enters a state other than "Ready" and when the Flow finishes in either "Completed" or any status that will not allow it to complete (i.e. "Failed", "Crashed").
+
+These notifications go to myself and will allow me to know when things are not working as expected so I can intervene and ensure it continue to run.
+
 ## Improvements and Next Steps
-- Error handling (duplicates, etc.)
-- Make combined_table a View.
-- Include county level data (may not be useful with survey results but needs to be varified).
-- Variable expansion.
+
+There are several things I want and really need to do to ensure this pipeline is successful in the long term.
+
+- Enhanced error handling: I tried to prevent as many errors as I could with the way the code is designed but there is no explicit error handling which will for sure lead to breakdowns and failures.  
+- Include county level data: All of the BEA and ACS data is readily available at greater levels of granualrity like county, but I have kicked this process off at the state level. It's likely that the survey results will not be useful at the county level but I would still find that level of analysis useful.
+- Variable expansion: The data available even from just these sources is very large and I have included only a sample of useful variables at this time. Expanding to include more variables will be a next step after an initial analysis is completed and additional questions come up.
+- App connection: I would like to expose this through an app that allow for visualization and access to external parties that aren't interested in interacting with the database. An app that has a map visualization is my first intention.
+- Make combined_table a View: For efficiency. Not entirely necessary now but if this process expands to the degree that it could then building in better efficiency will help performance.
+- Parallelization: Similar to above, several of these steps can be conducted in parallel so for efficiency I would like to implement this into the process.
 
