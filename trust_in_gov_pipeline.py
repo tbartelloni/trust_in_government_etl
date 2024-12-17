@@ -396,11 +396,11 @@ def trust_in_government_pipeline():
     final_table = transform_data(combined_table)
 
 # Deploy the flow
-github_repository_block = GitHubRepository.load("trust-in-gov-github")
+#github_repository_block = GitHubRepository.load("trust-in-gov-github")
 
 if __name__ == "__main__":
     flow.from_source(
-        source = github_repository_block,
+        source = "https://github.com/tbartelloni/trust_in_government_etl.git",
         entrypoint = "trust_in_gov-pipeline.py:trust_in_government_pipeline"
     ).deploy(
         name="gov-trust-deployment",
