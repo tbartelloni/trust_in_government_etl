@@ -401,7 +401,7 @@ def trust_in_government_pipeline():
 if __name__ == "__main__":
     flow.from_source(
         source = "https://github.com/tbartelloni/trust_in_government_etl.git",
-        entrypoint = "trust_in_gov-pipeline.py:trust_in_government_pipeline"
+        entrypoint = "trust_in_gov_pipeline.py:trust_in_government_pipeline"
     ).deploy(
         name="gov-trust-deployment",
         work_pool_name="MyWorkPool",
