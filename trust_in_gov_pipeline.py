@@ -5,9 +5,9 @@ import psycopg2
 import boto3
 from sqlalchemy import create_engine
 from io import StringIO
-from prefect import flow, task, get_run_logger
+from prefect import flow, task
 from prefect.blocks.system import Secret
-from prefect.server.schemas.schedules import CronSchedule
+#from prefect.server.schemas.schedules import CronSchedule
 #from prefect_github.repository import GitHubRepository
 
 
@@ -396,16 +396,16 @@ def trust_in_government_pipeline():
     # Step 11: Create final table
     transform_data()
 
-    # Deploy the flow
-    #github_repository_block = GitHubRepository.load("trust-in-gov-github")
+# Deploy the flow
+#github_repository_block = GitHubRepository.load("trust-in-gov-github")
 
-    if __name__ == "__main__":
-        flow.from_source(
-            source = "https://github.com/tbartelloni/trust_in_government_etl.git",
-            entrypoint = "trust_in_gov_pipeline.py:trust_in_government_pipeline"
-        ).deploy(
-            name="gov-trust-deployment",
-            work_pool_name="MyWorkPool",
-            cron="* * 28 3,6,9,12 *"
-        )
-        print("Good news everyone!")
+if __name__ == "__main__":
+    flow.from_source(
+        source = "https://github.com/tbartelloni/trust_in_government_etl.git",
+        entrypoint = "trust_in_gov_pipeline.py:trust_in_government_pipeline"
+    ).deploy(
+        name="gov-trust-deployment",
+        work_pool_name="MyWorkPool",
+        cron="* * 28 3,6,9,12 *"
+    )
+    print("Good news everyone!")
