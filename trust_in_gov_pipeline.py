@@ -8,7 +8,7 @@ from io import StringIO
 from prefect import flow, task, get_run_logger
 from prefect.blocks.system import Secret
 from prefect.server.schemas.schedules import CronSchedule
-from prefect_github.repository import GitHubRepository
+#from prefect_github.repository import GitHubRepository
 
 
 @task(retries=5, retry_delay_seconds=10)
@@ -80,8 +80,8 @@ def get_acs_data(
 
 @task
 def get_anes_data():
-    key = Secret.load("aws-key").get()
-    secret_key = Secret.load("aws-secret-key").get()
+    key = Secret.load("aws-s3-key").get()
+    secret_key = Secret.load("aws-s3-secret-key").get()
     client = boto3.client("s3",
                         aws_access_key_id=key,
                         aws_secret_access_key=secret_key,
@@ -118,7 +118,8 @@ def upload_gdp_data(gdp_clean):
                 Quarter integer,
                 cl_unit varchar,
                 unit_mult numeric,
-                DataValue numeric
+                DataValue numeric,
+                dblast_update TIMESTAMPTZ
                 )
                 """
                 )
@@ -169,11 +170,11 @@ def upload_rpp_data(rpp_clean):
     def insert_rpp(rpp_clean):
         for rpp in rpp_clean:
             cursor.execute("""
-            INSERT INTO bea_regional_rpp (code, GeoFips, GeoName, TimePeriod, cl_unit, unit_mult, DataValue, dblast_update)
+            INSERT INTO bea_regional_rpp (code, GeoFips, GeoName, TimePeriod, Quarter, cl_unit, unit_mult, DataValue, dblast_update)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, 
             (rpp['Code'], rpp['GeoFips'], rpp['GeoName'], rpp['TimePeriod'],
-            current_quarter, rpp['CL_UNIT'], rpp['UNIT_MULT'], float(rpp['DataValue'], current_timestamp)))
+            current_quarter, rpp['CL_UNIT'], rpp['UNIT_MULT'], float(rpp['DataValue']), current_timestamp))
         conn.commit()
 
     insert_rpp(rpp_clean)
@@ -182,7 +183,6 @@ def upload_rpp_data(rpp_clean):
 @task
 def upload_acs_data(acs_clean, acs_year):
     current_timestamp = datetime.now()
-    datayear=acs_year
     user = Secret.load("heroku-user").get()
     password = Secret.load("heroku-password").get()
     conn = psycopg2.connect(
@@ -202,22 +202,23 @@ def upload_acs_data(acs_clean, acs_year):
                 median_household_income integer,
                 total_population integer,
                 over16_population integer,
-                geo_id integer PRIMARY KEY,   
+                geo_id integer,   
                 TimePeriod integer,
-                dblast_update TIMESTAMPTZ
+                dblast_update TIMESTAMPTZ,
+                PRIMARY KEY (geo_id, TimePeriod)
                 )
                 """
                 )
 
-    def insert_acs(acs_clean,datayear):
+    def insert_acs(acs_clean,acs_year):
         for acs in acs_clean:
             cursor.execute("""
             INSERT INTO acs_state_pop_stats (GeoName, civ_labor_force_total, armed_forces, civ_employed, median_household_income, total_population, over16_population, geo_id, TimePeriod, dblast_update)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (geo_id, TimePeriod) DO NOTHING;                           
             """, 
             (
-            acs[0], int(acs[1]), int(acs[2]), int(acs[3]), int(acs[4]), int(acs[5]), int(acs[6]), int(acs[7]), int(datayear, current_timestamp))
+            acs[0], int(acs[1]), int(acs[2]), int(acs[3]), int(acs[4]), int(acs[5]), int(acs[6]), int(acs[7]), int(acs_year), current_timestamp)
             )
         conn.commit()
 
@@ -289,7 +290,7 @@ def combine_data():
     cursor = conn.cursor()
 
     cursor.execute("""
-                DROP TABLE IF EXISTS combined_table
+                DROP TABLE IF EXISTS combined_table;
 
                 CREATE TABLE combined_table AS
                 SELECT geo.*,
@@ -367,44 +368,44 @@ def trust_in_government_pipeline():
     rpp_clean = get_rpp_data()
 
     # Step 3: Load acs data
-    acs_clean = get_acs_data()
+    acs_clean, acs_year = get_acs_data()
 
     # Step 4: Load anes data
     anes_clean = get_anes_data()
 
     # Steps 5-8 can be run in parallel
     # Step 5: Insert gdp data
-    gdp_table = upload_gdp_data(gdp_clean)
+    upload_gdp_data(gdp_clean)
 
     # Step 6: Insert rpp data
-    rpp_table = upload_rpp_data(rpp_clean)
+    upload_rpp_data(rpp_clean)
 
     # Step 7: Insert acs data
-    acs_table = upload_acs_data(acs_clean, acs_year)
+    upload_acs_data(acs_clean, acs_year)
 
     # Step 8: Insert anes data
-    anes_table = upload_anes_data(anes_clean)
+    upload_anes_data(anes_clean)
 
     # Steps 9-11 must be run in succession
     # Step 9: Aggregate anes data
-    anes_aggregate = aggregate_anes_data(anes_table)
+    aggregate_anes_data()
 
     # Step 10: Combined tables to single table
-    combined_table = combine_data(anes_aggregate, gdp_table, rpp_table, acs_table)
+    combine_data()
 
     # Step 11: Create final table
-    final_table = transform_data(combined_table)
+    transform_data()
 
-# Deploy the flow
-#github_repository_block = GitHubRepository.load("trust-in-gov-github")
+    # Deploy the flow
+    #github_repository_block = GitHubRepository.load("trust-in-gov-github")
 
-if __name__ == "__main__":
-    flow.from_source(
-        source = "https://github.com/tbartelloni/trust_in_government_etl.git",
-        entrypoint = "trust_in_gov_pipeline.py:trust_in_government_pipeline"
-    ).deploy(
-        name="gov-trust-deployment",
-        work_pool_name="MyWorkPool",
-        cron="* * 28 3,6,9,12 *"
-    )
-    print("Good news everyone!")
+    if __name__ == "__main__":
+        flow.from_source(
+            source = "https://github.com/tbartelloni/trust_in_government_etl.git",
+            entrypoint = "trust_in_gov_pipeline.py:trust_in_government_pipeline"
+        ).deploy(
+            name="gov-trust-deployment",
+            work_pool_name="MyWorkPool",
+            cron="* * 28 3,6,9,12 *"
+        )
+        print("Good news everyone!")
