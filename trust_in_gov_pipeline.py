@@ -404,7 +404,7 @@ if __name__ == "__main__":
         entrypoint = "trust_in_gov-pipeline.py:trust_in_government_pipeline"
     ).deploy(
         name="gov-trust-deployment",
-        work_pool_name="MyWorkPool"
+        work_pool_name="MyWorkPool",
         cron="* * L 3,6,9,12"
     )
     print("Good news everyone!")
