@@ -402,10 +402,9 @@ if __name__ == "__main__":
     flow.from_source(
         source = github_repository_block,
         entrypoint = "trust_in_gov-pipeline.py:trust_in_government_pipeline"
-    )
-    trust_in_government_pipeline.deploy(
-        source = github_repository_block
+    ).deploy(
         name="gov-trust-deployment",
         work_pool_name="MyWorkPool"
+        cron="* * L 3,6,9,12"
     )
     print("Good news everyone!")
