@@ -399,6 +399,10 @@ def trust_in_government_pipeline():
 github_repository_block = GitHubRepository.load("trust-in-gov-github")
 
 if __name__ == "__main__":
+    flow.from_source(
+        source = github_repository_block,
+        entrypoint = "trust_in_gov-pipeline.py:trust_in_government_pipeline"
+    )
     trust_in_government_pipeline.deploy(
         source = github_repository_block
         name="gov-trust-deployment",
